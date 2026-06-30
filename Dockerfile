@@ -1,32 +1,28 @@
-# --- Build frontend (Vite) + install all deps ---
+# ---------- Build Stage ----------
 FROM node:20-alpine AS builder
+
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package*.json ./
 RUN npm ci
 
 COPY . .
 
-# Same-origin API when UI is served by Express from this container
-ENV VITE_API_URL=/api
-
 RUN npm run build
 
-# --- Production image: Node + built static files ---
-FROM node:20-alpine AS production
+# ---------- Production Stage ----------
+FROM node:20-alpine
+
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY package*.json ./
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
-COPY server ./server
-
-RUN chown -R node:node /app
-USER node
+COPY index.js ./
 
 EXPOSE 5000
 
-CMD ["node", "server/index.js"]
+CMD ["node", "index.js"]
